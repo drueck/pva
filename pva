@@ -17,7 +17,7 @@ class Match
 	end
 
 	def to_s
-		formatted_time = time.strftime('%-m/%-e %l:%M %P')
+		formatted_time = time.strftime('%-m/%-e %l:%M%P')
 		"#{formatted_time} #{home} vs. #{visitor} at #{location}"
 	end
 
@@ -40,10 +40,11 @@ module Pva
 				puts %{usage: pva command [options]
 
 commands:
-schedule <team-name>
-scores <team-name>
-standings <team-name>
-help
+teams                   : list all current teams
+schedule <team-name>    : show the schedule for the given team
+scores <team-name>      : not yet implemented
+standings <team-name>   : not yet implemented
+help                    : display this message
 
 }
 			end
@@ -56,12 +57,23 @@ help
 					self.usage
 				else
 					team_name = args.shift
-					puts "Schedule for #{team_name}"
+					teams_provider = TeamsProvider.new
+					team = teams_provider.lookup(team_name)
+					if team.nil?
+						puts "Couldn't find the team you specified. Here is the current list of teams..."
+						self.teams
+					else
+						puts "Schedule for #{team.name}"
+						schedule_provider = ScheduleProvider.new
+						matches = schedule_provider.get_schedule(team.id)
+						matches.each { |m| puts m }
+					end
 				end
 			end
 
-			def teams
-				TeamsProvider.lookup('billy')
+			def teams(*args)
+				teams = TeamsProvider.new.all
+				teams.each { |t| puts t }
 			end
 
 			def method_missing(method, *args, &blk)
@@ -82,17 +94,20 @@ help
 		end
 
 		def to_s
-			"#{id} #{name} #{league}"
+			"#{name} (#{league})"
 		end
 	end
 
 	class TeamsProvider
-		def self.lookup(team_name)
+		def lookup(team_name)
+			all.find { |team| team.name.casecmp(team_name) == 0 }
+		end
+		def all
 			response = HTTParty.get('http://portlandvolleyball.org/schedules.php')
 			doc = Nokogiri::HTML(response)
 			teams_select = doc.css('select[name=teams]')
 			team_options = teams_select.children[1..-1]
-			teams = team_options.map do |option|
+			team_options.map do |option|
 				id = option['value']
 				team_string = option.content
 				open_paren_pos = team_string.index('(')
@@ -101,37 +116,30 @@ help
 				league = team_string[open_paren_pos+1..close_paren_pos-1].strip
 				Team.new(id: id, name: name, league: league)
 			end
-			teams.each do |team|
-				puts team
+		end
+	end
+
+	class ScheduleProvider
+		def get_schedule(team_id)
+			response = HTTParty.post('http://portlandvolleyball.org/schedules.php', body: { teams: team_id })
+			doc = Nokogiri::HTML(response)
+
+			content_rows = doc.css('tr')[1..-1]
+			matches_array = content_rows.map do |tr|
+				tr.children.map { |td| td.content }
+			end
+			matches_array.map do |ma|
+				Match.new({
+					time: "#{ma[0]} #{ma[1]} pm",
+					home: ma[2],
+					visitor: ma[3],
+					location: ma[4],
+					league: ma[5]
+				})
 			end
 		end
 	end
 
 end
 
-
 Pva::Cli.run(*ARGV)
-
-exit
-
-
-response = HTTParty.post('http://portlandvolleyball.org/schedules.php', body: { teams: 1267 })
-doc = Nokogiri::HTML(response)
-
-content_rows = doc.css('tr')[1..-1]
-matches_array = content_rows.map do |tr|
-	tr.children.map { |td| td.content }
-end
-matches = matches_array.map do |ma|
-	Match.new({
-		time: "#{ma[0]} #{ma[1]} pm",
-		home: ma[2],
-		visitor: ma[3],
-		location: ma[4],
-		league: ma[5]
-	})
-end
-
-matches.each do |match|
-	puts match
-end
