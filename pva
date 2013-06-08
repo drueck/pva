@@ -1,0 +1,137 @@
+#!/usr/bin/env ruby
+
+require 'httparty'
+require 'nokogiri'
+require 'chronic'
+
+class Match
+
+	attr_accessor :time, :home, :visitor, :location, :league
+
+	def initialize(params={})
+		@time = Chronic.parse(params[:time])
+		@home = params[:home]
+		@visitor = params[:visitor]
+		@location = params[:location]
+		@league = params[:league]
+	end
+
+	def to_s
+		formatted_time = time.strftime('%-m/%-e %l:%M %P')
+		"#{formatted_time} #{home} vs. #{visitor} at #{location}"
+	end
+
+end
+
+module Pva
+	class Cli
+
+		class << self
+
+			def run(*args)
+				if args.empty?
+					self.usage
+				else
+					self.public_send(args.shift, *args)
+				end
+			end
+
+			def usage
+				puts %{usage: pva command [options]
+
+commands:
+schedule <team-name>
+scores <team-name>
+standings <team-name>
+help
+
+}
+			end
+			alias :help :usage
+			alias :h :usage
+
+			def schedule(*args)
+				if args.empty?
+					puts "Please specify the team name you want a schedule for"
+					self.usage
+				else
+					team_name = args.shift
+					puts "Schedule for #{team_name}"
+				end
+			end
+
+			def teams
+				TeamsProvider.lookup('billy')
+			end
+
+			def method_missing(method, *args, &blk)
+				puts "There is #{method} command in pva"
+				self.usage
+			end
+
+		end
+
+	end
+
+	class Team
+		attr_reader :id, :name, :league
+		def initialize(params={})
+			@id = params[:id]
+			@name = params[:name]
+			@league = params[:league]
+		end
+
+		def to_s
+			"#{id} #{name} #{league}"
+		end
+	end
+
+	class TeamsProvider
+		def self.lookup(team_name)
+			response = HTTParty.get('http://portlandvolleyball.org/schedules.php')
+			doc = Nokogiri::HTML(response)
+			teams_select = doc.css('select[name=teams]')
+			team_options = teams_select.children[1..-1]
+			teams = team_options.map do |option|
+				id = option['value']
+				team_string = option.content
+				open_paren_pos = team_string.index('(')
+				close_paren_pos = team_string.index(')')
+				name = team_string[0..open_paren_pos-1].strip
+				league = team_string[open_paren_pos+1..close_paren_pos-1].strip
+				Team.new(id: id, name: name, league: league)
+			end
+			teams.each do |team|
+				puts team
+			end
+		end
+	end
+
+end
+
+
+Pva::Cli.run(*ARGV)
+
+exit
+
+
+response = HTTParty.post('http://portlandvolleyball.org/schedules.php', body: { teams: 1267 })
+doc = Nokogiri::HTML(response)
+
+content_rows = doc.css('tr')[1..-1]
+matches_array = content_rows.map do |tr|
+	tr.children.map { |td| td.content }
+end
+matches = matches_array.map do |ma|
+	Match.new({
+		time: "#{ma[0]} #{ma[1]} pm",
+		home: ma[2],
+		visitor: ma[3],
+		location: ma[4],
+		league: ma[5]
+	})
+end
+
+matches.each do |match|
+	puts match
+end
