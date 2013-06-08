@@ -3,6 +3,7 @@
 require 'httparty'
 require 'nokogiri'
 require 'chronic'
+require 'csv'
 
 class Match
 
@@ -98,9 +99,41 @@ help                    : display this message
 		end
 	end
 
-	class TeamsProvider
+	class TeamsCache
+		attr_reader :teams_file
+		def initialize(teams_file=nil)
+			@teams_file = teams_file || ENV['HOME'] + '/.pva'
+		end
 		def lookup(team_name)
-			all.find { |team| team.name.casecmp(team_name) == 0 }
+			return nil unless File.exist?(teams_file)
+			CSV.foreach(teams_file) do |row|
+				if row[1].casecmp(team_name) == 0
+					return Team.new(id: row[0].to_i, name: row[1], league: row[2])
+				end
+			end
+			return nil
+		end
+		def store(team)
+			if lookup(team.name).nil?
+				CSV.open(teams_file, 'ab') do |csv|
+					csv << [ "#{team.id}", "#{team.name}", "#{team.league}" ]
+				end
+			end
+		end
+	end
+
+	class TeamsProvider
+		attr_reader :cache
+		def initialize
+			@cache = TeamsCache.new
+		end
+		def lookup(team_name)
+			team = cache.lookup(team_name)
+			if team.nil?
+				team = all.find { |team| team.name.casecmp(team_name) == 0 }
+				cache.store(team) unless team.nil?
+			end
+			team
 		end
 		def all
 			response = HTTParty.get('http://portlandvolleyball.org/schedules.php')
