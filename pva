@@ -30,7 +30,7 @@ module Pva
 		class << self
 
 			def run(*args)
-				if args.empty?
+				if args.nil? || args.empty?
 					self.usage
 				else
 					self.public_send(args.shift, *args)
@@ -43,9 +43,16 @@ module Pva
 commands:
 teams                   : list all current teams
 schedule <team-name>    : show the schedule for the given team
+schedules               : show schedules for all of your teams
 scores <team-name>      : not yet implemented
 standings <team-name>   : not yet implemented
 help                    : display this message
+
+Each time you look up a schedule for a team, that team is stored
+in your teams cache at ~/.pva. This list is used to determine which
+teams you want schedules for when you do `pva schedules`. If you
+want to delete a team, simply delete it's line from ~/.pva. To add
+a team, look up it's schedule and it will be added to the list.
 
 }
 			end
@@ -68,6 +75,20 @@ help                    : display this message
 						schedule_provider = ScheduleProvider.new
 						matches = schedule_provider.get_schedule(team.id)
 						matches.each { |m| puts m }
+					end
+				end
+			end
+
+			def schedules
+				teams_cache = TeamsCache.new
+				teams = teams_cache.all
+				if teams.empty?
+					puts "No teams were found in your teams cache. Look up a team's schedule to add that team."
+				else
+					puts "Schedules for Your Teams:\n\n"
+					teams.each do |team|
+						schedule(team.name)
+						puts ""
 					end
 				end
 			end
@@ -119,6 +140,14 @@ help                    : display this message
 					csv << [ "#{team.id}", "#{team.name}", "#{team.league}" ]
 				end
 			end
+		end
+		def all
+			return [] unless File.exist?(teams_file)
+			teams = []
+			CSV.foreach(teams_file) do |row|
+				teams << Team.new(id: row[0].to_i, name: row[1], league: row[2])
+			end
+			teams
 		end
 	end
 
