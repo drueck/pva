@@ -7,38 +7,38 @@ require 'csv'
 
 class Match
 
-	attr_accessor :time, :home, :visitor, :location, :league
+  attr_accessor :time, :home, :visitor, :location, :league
 
-	def initialize(params={})
-		@time = Chronic.parse(params[:time])
-		@home = params[:home]
-		@visitor = params[:visitor]
-		@location = params[:location]
-		@league = params[:league]
-	end
+  def initialize(params={})
+    @time = Chronic.parse(params[:time])
+    @home = params[:home]
+    @visitor = params[:visitor]
+    @location = params[:location]
+    @league = params[:league]
+  end
 
-	def to_s
-		formatted_time = time.strftime('%-m/%-e %l:%M%P')
-		"#{formatted_time} #{home} vs. #{visitor} at #{location}"
-	end
+  def to_s
+    formatted_time = time.strftime('%-m/%-e %l:%M%P')
+    "#{formatted_time} #{home} vs. #{visitor} at #{location}"
+  end
 
 end
 
 module Pva
-	class Cli
+  class Cli
 
-		class << self
+    class << self
 
-			def run(*args)
-				if args.nil? || args.empty?
-					self.usage
-				else
-					self.public_send(args.shift, *args)
-				end
-			end
+      def run(*args)
+        if args.nil? || args.empty?
+          self.usage
+        else
+          self.public_send(args.shift, *args)
+        end
+      end
 
-			def usage
-				puts %{usage: pva command [options]
+      def usage
+        puts %{usage: pva command [options]
 
 commands:
 teams                   : list all current teams
@@ -55,152 +55,152 @@ want to delete a team, simply delete it's line from ~/.pva. To add
 a team, look up it's schedule and it will be added to the list.
 
 }
-			end
-			alias :help :usage
-			alias :h :usage
+      end
+      alias :help :usage
+      alias :h :usage
 
-			def schedule(*args)
-				if args.empty?
-					puts "Please specify the team name you want a schedule for"
-					self.usage
-				else
-					team_name = args.shift
-					teams_provider = TeamsProvider.new
-					team = teams_provider.lookup(team_name)
-					if team.nil?
-						puts "Couldn't find the team you specified. Here is the current list of teams..."
-						self.teams
-					else
-						puts "Schedule for #{team.name}"
-						schedule_provider = ScheduleProvider.new
-						matches = schedule_provider.get_schedule(team.id)
-						matches.each { |m| puts m }
-					end
-				end
-			end
+      def schedule(*args)
+        if args.empty?
+          puts "Please specify the team name you want a schedule for"
+          self.usage
+        else
+          team_name = args.shift
+          teams_provider = TeamsProvider.new
+          team = teams_provider.lookup(team_name)
+          if team.nil?
+            puts "Couldn't find the team you specified. Here is the current list of teams..."
+            self.teams
+          else
+            puts "Schedule for #{team.name}"
+            schedule_provider = ScheduleProvider.new
+            matches = schedule_provider.get_schedule(team.id)
+            matches.each { |m| puts m }
+          end
+        end
+      end
 
-			def schedules
-				teams_cache = TeamsCache.new
-				teams = teams_cache.all
-				if teams.empty?
-					puts "No teams were found in your teams cache. Look up a team's schedule to add that team."
-				else
-					puts "Schedules for Your Teams:\n\n"
-					teams.each do |team|
-						schedule(team.name)
-						puts ""
-					end
-				end
-			end
+      def schedules
+        teams_cache = TeamsCache.new
+        teams = teams_cache.all
+        if teams.empty?
+          puts "No teams were found in your teams cache. Look up a team's schedule to add that team."
+        else
+          puts "Schedules for Your Teams:\n\n"
+          teams.each do |team|
+            schedule(team.name)
+            puts ""
+          end
+        end
+      end
 
-			def teams(*args)
-				teams = TeamsProvider.new.all
-				teams.each { |t| puts t }
-			end
+      def teams(*args)
+        teams = TeamsProvider.new.all
+        teams.each { |t| puts t }
+      end
 
-			def method_missing(method, *args, &blk)
-				puts "There is #{method} command in pva"
-				self.usage
-			end
+      def method_missing(method, *args, &blk)
+        puts "There is #{method} command in pva"
+        self.usage
+      end
 
-		end
+    end
 
-	end
+  end
 
-	class Team
-		attr_reader :id, :name, :league
-		def initialize(params={})
-			@id = params[:id]
-			@name = params[:name]
-			@league = params[:league]
-		end
+  class Team
+    attr_reader :id, :name, :league
+    def initialize(params={})
+      @id = params[:id]
+      @name = params[:name]
+      @league = params[:league]
+    end
 
-		def to_s
-			"#{name} (#{league})"
-		end
-	end
+    def to_s
+      "#{name} (#{league})"
+    end
+  end
 
-	class TeamsCache
-		attr_reader :teams_file
-		def initialize(teams_file=nil)
-			@teams_file = teams_file || ENV['HOME'] + '/.pva'
-		end
-		def lookup(team_name)
-			return nil unless File.exist?(teams_file)
-			CSV.foreach(teams_file) do |row|
-				if row[1].casecmp(team_name) == 0
-					return Team.new(id: row[0].to_i, name: row[1], league: row[2])
-				end
-			end
-			return nil
-		end
-		def store(team)
-			if lookup(team.name).nil?
-				CSV.open(teams_file, 'ab') do |csv|
-					csv << [ "#{team.id}", "#{team.name}", "#{team.league}" ]
-				end
-			end
-		end
-		def all
-			return [] unless File.exist?(teams_file)
-			teams = []
-			CSV.foreach(teams_file) do |row|
-				teams << Team.new(id: row[0].to_i, name: row[1], league: row[2])
-			end
-			teams
-		end
-	end
+  class TeamsCache
+    attr_reader :teams_file
+    def initialize(teams_file=nil)
+      @teams_file = teams_file || ENV['HOME'] + '/.pva'
+    end
+    def lookup(team_name)
+      return nil unless File.exist?(teams_file)
+      CSV.foreach(teams_file) do |row|
+        if row[1].casecmp(team_name) == 0
+          return Team.new(id: row[0].to_i, name: row[1], league: row[2])
+        end
+      end
+      return nil
+    end
+    def store(team)
+      if lookup(team.name).nil?
+        CSV.open(teams_file, 'ab') do |csv|
+          csv << [ "#{team.id}", "#{team.name}", "#{team.league}" ]
+        end
+      end
+    end
+    def all
+      return [] unless File.exist?(teams_file)
+      teams = []
+      CSV.foreach(teams_file) do |row|
+        teams << Team.new(id: row[0].to_i, name: row[1], league: row[2])
+      end
+      teams
+    end
+  end
 
-	class TeamsProvider
-		attr_reader :cache
-		def initialize
-			@cache = TeamsCache.new
-		end
-		def lookup(team_name)
-			team = cache.lookup(team_name)
-			if team.nil?
-				team = all.find { |team| team.name.casecmp(team_name) == 0 }
-				cache.store(team) unless team.nil?
-			end
-			team
-		end
-		def all
-			response = HTTParty.get('http://portlandvolleyball.org/schedules.php')
-			doc = Nokogiri::HTML(response)
-			teams_select = doc.css('select[name=teams]')
-			team_options = teams_select.children[1..-1]
-			team_options.map do |option|
-				id = option['value']
-				team_string = option.content
-				open_paren_pos = team_string.index('(')
-				close_paren_pos = team_string.index(')')
-				name = team_string[0..open_paren_pos-1].strip
-				league = team_string[open_paren_pos+1..close_paren_pos-1].strip
-				Team.new(id: id, name: name, league: league)
-			end
-		end
-	end
+  class TeamsProvider
+    attr_reader :cache
+    def initialize
+      @cache = TeamsCache.new
+    end
+    def lookup(team_name)
+      team = cache.lookup(team_name)
+      if team.nil?
+        team = all.find { |team| team.name.casecmp(team_name) == 0 }
+        cache.store(team) unless team.nil?
+      end
+      team
+    end
+    def all
+      response = HTTParty.get('http://portlandvolleyball.org/schedules.php')
+      doc = Nokogiri::HTML(response)
+      teams_select = doc.css('select[name=teams]')
+      team_options = teams_select.children[1..-1]
+      team_options.map do |option|
+        id = option['value']
+        team_string = option.content
+        open_paren_pos = team_string.index('(')
+        close_paren_pos = team_string.index(')')
+        name = team_string[0..open_paren_pos-1].strip
+        league = team_string[open_paren_pos+1..close_paren_pos-1].strip
+        Team.new(id: id, name: name, league: league)
+      end
+    end
+  end
 
-	class ScheduleProvider
-		def get_schedule(team_id)
-			response = HTTParty.post('http://portlandvolleyball.org/schedules.php', body: { teams: team_id })
-			doc = Nokogiri::HTML(response)
+  class ScheduleProvider
+    def get_schedule(team_id)
+      response = HTTParty.post('http://portlandvolleyball.org/schedules.php', body: { teams: team_id })
+      doc = Nokogiri::HTML(response)
 
-			content_rows = doc.css('tr')[1..-1]
-			matches_array = content_rows.map do |tr|
-				tr.children.map { |td| td.content }
-			end
-			matches_array.map do |ma|
-				Match.new({
-					time: "#{ma[0]} #{ma[1]} pm",
-					home: ma[2],
-					visitor: ma[3],
-					location: ma[4],
-					league: ma[5]
-				})
-			end
-		end
-	end
+      content_rows = doc.css('tr')[1..-1]
+      matches_array = content_rows.map do |tr|
+        tr.children.map { |td| td.content }
+      end
+      matches_array.map do |ma|
+        Match.new({
+          time: "#{ma[0]} #{ma[1]} pm",
+          home: ma[2],
+          visitor: ma[3],
+          location: ma[4],
+          league: ma[5]
+        })
+      end
+    end
+  end
 
 end
 
