@@ -208,23 +208,30 @@ a team, look up it's schedule and it will be added to the list.
 
   class ScheduleProvider
 
+    SCHEDULES_URL = 'http://portlandvolleyball.org/schedules.php'
+
     def get_schedule(team_id)
-      response = HTTParty.post('http://portlandvolleyball.org/schedules.php', body: { teams: team_id })
+      matches_data(team_id).map { |m| match_from_array(m) }
+    end
+
+    private
+
+    def matches_data(team_id)
+      response = HTTParty.post(SCHEDULES_URL, body: { teams: team_id })
       doc = Nokogiri::HTML(response)
 
-      content_rows = doc.css('tr')[1..-1]
-      matches_array = content_rows.map do |tr|
-        tr.children.map { |td| td.content }
-      end
-      matches_array.map do |ma|
-        Match.new({
-          time: "#{ma[0]} #{ma[1]} pm",
-          home: ma[2],
-          visitor: ma[3],
-          location: ma[4],
-          league: ma[5]
-        })
-      end
+      doc.css('tr')[1..-1]
+        .map { |tr| tr.element_children.map(&:content) }
+    end
+
+    def match_from_array(m)
+      Match.new({
+        time: "#{m[0]} #{m[1]} pm",
+        home: m[2],
+        visitor: m[3],
+        location: m[4],
+        league: m[5]
+      })
     end
 
   end
