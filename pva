@@ -51,8 +51,8 @@ help                    : display this message
 Each time you look up a schedule for a team, that team is stored
 in your teams cache at ~/.pva. This list is used to determine which
 teams you want schedules for when you do `pva schedules`. If you
-want to delete a team, simply delete it's line from ~/.pva. To add
-a team, look up it's schedule and it will be added to the list.
+want to delete a team, simply delete its line from ~/.pva. To add
+a team, look up its schedule and it will be added to the list.
 
 }
       end
