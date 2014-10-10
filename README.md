@@ -1,7 +1,7 @@
 # pva
 
-A command line utility to check schedules, scores and standings for
-[Portland Volleyball Association](http://portlandvolleyball.org) teams
+A command line interface for the
+[Portland Volleyball Association](http://portlandvolleyball.org)
 
 ## Installation and Usage
 
