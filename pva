@@ -5,25 +5,6 @@ require 'nokogiri'
 require 'chronic'
 require 'csv'
 
-class Match
-
-  attr_accessor :time, :home, :visitor, :location, :league
-
-  def initialize(params={})
-    @time = Chronic.parse(params[:time])
-    @home = params[:home]
-    @visitor = params[:visitor]
-    @location = params[:location]
-    @league = params[:league]
-  end
-
-  def to_s
-    formatted_time = time.strftime('%-m/%-e %l:%M%P')
-    "#{formatted_time} #{home} vs. #{visitor} at #{location}"
-  end
-
-end
-
 module Pva
   class Cli
 
@@ -42,17 +23,19 @@ module Pva
 
 commands:
 teams                   : list all current teams
-schedule <team-name>    : show the schedule for the given team
+schedule 'team name'    : show the schedule for the given team
 schedules               : show schedules for all of your teams
-scores <team-name>      : not yet implemented
-standings <team-name>   : not yet implemented
+standings 'team name'   : show standings for the given team's division
+standings               : show standings for all of your teams' divisions
+scores 'team name'      : not yet implemented
 help                    : display this message
 
-Each time you look up a schedule for a team, that team is stored
+Each time you look up something for a team that team is stored
 in your teams cache at ~/.pva. This list is used to determine which
-teams you want schedules for when you do `pva schedules`. If you
+teams you are interested in if you don't specify one. If you
 want to delete a team, simply delete its line from ~/.pva. To add
-a team, look up its schedule and it will be added to the list.
+a team, look up its schedule or standings and it will be added to
+the list.
 
 }
       end
@@ -83,11 +66,39 @@ a team, look up its schedule and it will be added to the list.
         teams_cache = TeamsCache.new
         teams = teams_cache.all
         if teams.empty?
-          puts "No teams were found in your teams cache. Look up a team's schedule to add that team."
+          puts "No teams were found in your teams cache. "\
+            "Look up a team's schedule to add that team."
         else
           puts "Schedules for Your Teams:\n\n"
           teams.each do |team|
             schedule(team.name)
+            puts ""
+          end
+        end
+      end
+
+      def standings(*args)
+        if args.empty?
+          teams = TeamsCache.new.all
+          if teams.empty?
+            puts "No teams were found in your teams cache. "\
+              "Look up a team's standings to add that team."
+          else
+            puts "Standings for Your Teams' Divisions:\n\n"
+            teams.map(&:division).uniq.each do |division|
+              puts DivisionStandingsProvider.new.get_standings(division)
+              puts ""
+            end
+          end
+        else
+          team_name = args.shift
+          teams_provider = TeamsProvider.new
+          team = teams_provider.lookup(team_name)
+          if team.nil?
+            puts "Couldn't find the team you specified. Here is the current list of teams..."
+            self.teams
+          else
+            puts DivisionStandingsProvider.new.get_standings(team.division)
             puts ""
           end
         end
@@ -109,16 +120,114 @@ a team, look up its schedule and it will be added to the list.
 
   class Team
 
-    attr_reader :id, :name, :league
+    attr_reader :id, :name, :division
 
     def initialize(params={})
       @id = params[:id]
       @name = params[:name]
-      @league = params[:league]
+      @division = params[:division]
     end
 
     def to_s
-      "#{name} (#{league})"
+      "#{name} (#{division})"
+    end
+
+  end
+
+  class Match
+
+    attr_accessor :time, :home, :visitor, :location, :division
+
+    def initialize(params={})
+      @time = Chronic.parse(params[:time])
+      @home = params[:home]
+      @visitor = params[:visitor]
+      @location = params[:location]
+      @division = params[:division]
+    end
+
+    def to_s
+      formatted_time = time.strftime('%-m/%-e %l:%M%P')
+      "#{formatted_time} #{home} vs. #{visitor} at #{location}"
+    end
+
+  end
+
+  class Standing
+
+    attr_reader :team_name, :wins, :losses, :winning_percentage,
+      :match_points, :match_points_possible, :match_point_percentage
+
+    def initialize(params={})
+      @team_name = params[:team_name]
+      @wins = Integer(params[:wins])
+      @losses = Integer(params[:losses])
+      @winning_percentage = Float(params[:winning_percentage])
+      @match_points = Float(params[:match_points])
+      @match_points_possible = Float(params[:match_points_possible])
+      @match_point_percentage = Float(params[:match_point_percentage])
+    end
+
+  end
+
+  class DivisionStandings
+
+    attr_reader :division_name, :standings
+
+    def initialize(params={})
+      @division_name = params[:division_name]
+      @standings = params[:standings]
+    end
+
+    def to_s
+      division_name + "\n\n" +
+        formatted_headings + "\n" +
+        formatted_standings
+    end
+
+    private
+
+    def formatted_headings
+      sprintf(format, *headings)
+    end
+
+    def formatted_standings
+      standings.map { |s| sprintf(format, *column_values(s)) }.join("\n")
+    end
+
+    def format
+      @format ||= "%-#{name_column_width}s" +
+        numeric_column_widths.map { |w| "%#{w}s" }.join
+    end
+
+    def column_values(stats)
+      [stats.team_name,
+       stats.wins,
+       stats.losses,
+       sprintf("%.02f", stats.winning_percentage),
+       sprintf("%4.1f / %4.1f", stats.match_points, stats.match_points_possible),
+       sprintf("%.2f", stats.match_point_percentage)]
+    end
+
+    def headings
+      ["Team", "Wins", "Losses", "Winning %", "Match Points", "Match Point %"]
+    end
+
+    def name_column_width
+      ["Team".length, max_team_name_length].max + gutter_width
+    end
+
+    def max_team_name_length
+      return 0 if standings.empty?
+      standings.map(&:team_name).map(&:length).max
+    end
+
+    def numeric_column_widths
+      headings[1..-1].map { |heading| heading.length + gutter_width }
+    end
+
+    def gutter_width
+      2
     end
 
   end
@@ -135,7 +244,7 @@ a team, look up its schedule and it will be added to the list.
       return nil unless File.exist?(teams_file)
       CSV.foreach(teams_file) do |row|
         if row[1].casecmp(team_name) == 0
-          return Team.new(id: row[0].to_i, name: row[1], league: row[2])
+          return Team.new(id: row[0].to_i, name: row[1], division: row[2])
         end
       end
       return nil
@@ -144,7 +253,7 @@ a team, look up its schedule and it will be added to the list.
     def store(team)
       if lookup(team.name).nil?
         CSV.open(teams_file, 'ab') do |csv|
-          csv << [ "#{team.id}", "#{team.name}", "#{team.league}" ]
+          csv << [ "#{team.id}", "#{team.name}", "#{team.division}" ]
         end
       end
     end
@@ -153,7 +262,7 @@ a team, look up its schedule and it will be added to the list.
       return [] unless File.exist?(teams_file)
       teams = []
       CSV.foreach(teams_file) do |row|
-        teams << Team.new(id: row[0].to_i, name: row[1], league: row[2])
+        teams << Team.new(id: row[0].to_i, name: row[1], division: row[2])
       end
       teams
     end
@@ -192,14 +301,14 @@ a team, look up its schedule and it will be added to the list.
       id = option['value']
       return :not_a_team if id.nil? || id == ""
 
-      name, league = name_and_league(option.content)
-      Team.new(id: id, name: name, league: league)
+      name, division = name_and_division(option.content)
+      Team.new(id: id, name: name, division: division)
     end
 
-    def name_and_league(team_string)
-      expected_format = /(?<name>.+) \((?<league>.+?)\)/
+    def name_and_division(team_string)
+      expected_format = /(?<name>.+) \((?<division>.+?)\)/
       if (match_data = expected_format.match(team_string))
-        return [match_data[:name], match_data[:league]]
+        return [match_data[:name], match_data[:division]]
       end
       [team_string, "Unknown"]
     end
@@ -230,8 +339,45 @@ a team, look up its schedule and it will be added to the list.
         home: m[2],
         visitor: m[3],
         location: m[4],
-        league: m[5]
+        division: m[5]
       })
+    end
+
+  end
+
+  class DivisionStandingsProvider
+
+    STANDINGS_URL = 'http://portlandvolleyball.org/standings.php'
+
+    def get_standings(division_name)
+      DivisionStandings.new(division_name: division_name,
+                          standings: standings(division_name))
+    end
+
+    private
+
+    def standings(division_name)
+      standings_data(division_name).map { |s| standing_from_array(s) }
+    end
+
+    def standings_data(division_name)
+      response = HTTParty.get(STANDINGS_URL)
+      doc = Nokogiri::HTML(response)
+
+      doc.xpath("//a[@name='#{division_name}']/following::table[1]/tr")[1..-1]
+        .map { |tr| tr.element_children.map(&:content) }
+    end
+
+    def standing_from_array(s)
+      Standing.new(
+        team_name: s[0],
+        wins: s[1],
+        losses: s[2],
+        winning_percentage: s[3],
+        match_points: s[4],
+        match_points_possible: s[5],
+        match_point_percentage: s[6]
+      )
     end
 
   end
