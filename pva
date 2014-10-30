@@ -23,7 +23,7 @@ module Pva
 
 commands:
 teams                   : list all current teams
-schedule 'team name'    : show the schedule for the given team
+schedules 'team name'   : show the schedule for the given team
 schedules               : show schedules for all of your teams
 standings 'team name'   : show standings for the given team's division
 standings               : show standings for all of your teams' divisions
@@ -42,10 +42,20 @@ the list.
       alias :help :usage
       alias :h :usage
 
-      def schedule(*args)
+      def schedules(*args)
         if args.empty?
-          puts "Please specify the team name you want a schedule for"
-          self.usage
+          teams_cache = TeamsCache.new
+          teams = teams_cache.all
+          if teams.empty?
+            puts "No teams were found in your teams cache. "\
+              "Look up a team's schedule to add that team."
+          else
+            puts "Schedules for Your Teams:\n\n"
+            teams.each do |team|
+              schedules(team.name)
+              puts ""
+            end
+          end
         else
           team_name = args.shift
           teams_provider = TeamsProvider.new
@@ -61,21 +71,7 @@ the list.
           end
         end
       end
-
-      def schedules
-        teams_cache = TeamsCache.new
-        teams = teams_cache.all
-        if teams.empty?
-          puts "No teams were found in your teams cache. "\
-            "Look up a team's schedule to add that team."
-        else
-          puts "Schedules for Your Teams:\n\n"
-          teams.each do |team|
-            schedule(team.name)
-            puts ""
-          end
-        end
-      end
+      alias :schedule :schedules
 
       def standings(*args)
         if args.empty?
