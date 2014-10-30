@@ -11,7 +11,7 @@ executable.
 
 Then just run `pva` to display the help and see what commands are available.
 
-See it in action in this [asciicast](https://asciinema.org/a/13005)
+See it in action in this [asciicast](https://asciinema.org/a/13412)
 
 ## About
 
