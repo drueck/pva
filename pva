@@ -143,8 +143,22 @@ the list.
     end
 
     def to_s
-      formatted_time = time.strftime('%-m/%-e %l:%M%P')
-      "#{formatted_time} #{home} vs. #{visitor} at #{location}"
+      return "#{formatted_date} BYE" if bye?
+      "#{formatted_date_and_time} #{home} vs. #{visitor} at #{location}"
+    end
+
+    def bye?
+      location == "BYE"
+    end
+
+    private
+
+    def formatted_date_and_time
+      time.strftime('%-m/%e %l:%M%P')
+    end
+
+    def formatted_date
+      time.strftime('%-m/%e -------')
     end
 
   end
@@ -326,7 +340,7 @@ the list.
       doc = Nokogiri::HTML(response)
 
       doc.css('tr')[1..-1]
-        .map { |tr| tr.element_children.map(&:content) }
+        .map { |tr| tr.element_children.map(&:content).map(&:strip) }
     end
 
     def match_from_array(m)
