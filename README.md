@@ -5,9 +5,10 @@ A command line interface for the
 
 ## Installation and Usage
 
-Requires `ruby` and the `httparty` and `chronic` gems. Once those are
-installed, put the `pva` file somewhere in your path and make sure it's
-executable.
+Requires `ruby` and `bundler`. Once those are installed, clone this repository,
+change to the project directory and run `bundle` to install the dependencies.
+Once those are installed, link or move the `pva` file to somewhere in your path
+and make sure it's executable.
 
 Then just run `pva` to display the help and see what commands are available.
 
