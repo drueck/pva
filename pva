@@ -154,13 +154,16 @@ the list.
     private
 
     def formatted_date_and_time
-      time.strftime('%-m/%e %l:%M%P')
+      time ? time.strftime('%-m/%e %l:%M%P') : unknown_time
     end
 
     def formatted_date
-      time.strftime('%-m/%e -------')
+      time ? time.strftime('%-m/%e -------') : unknown_time
     end
 
+    def unknown_time
+      "??/?? ?:????"
+    end
   end
 
   class Standing
