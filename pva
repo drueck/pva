@@ -100,6 +100,53 @@ the list.
         end
       end
 
+  # Scores for Court Jesters
+  #
+  # Date        Time     Opponent          Set 1  Set 2  Set 3  Result  MPs
+  # 01/01/2016   8:00pm  Two Dink Minimum  25-22  25-20  15-8   W       4.5
+  # 01/01/2016   9:00pm  Two Dink Minimum  25-22  25-20  15-8   W       4.5
+  # 01/01/2016  10:00pm  Two Dink Minimum  25-22  25-20  15-8   W       4.5
+  #
+  # %-10s  %7s  #-{opponent_name_column_width}s  %-5s  %-5s  %-5s  %-6s  %3.1f
+  #
+  # Record: 1-0, 4.5 Match Points of 4.5 Possible
+  #
+  # Match Point Calculation
+  # .5 for each set won
+  # 1 for most total points in the match
+  # 2 for winning the match
+
+      # def scores(*args)
+      #   if args.empty?
+      #     teams = TeamsCache.new.all
+      #     if teams.empty?
+      #       puts "No teams were found in your teams cache. "\
+      #         "Look up a team's scores to add that team."
+      #     else
+      #       puts "Scores for your teams:\n\n"
+      #       teams.each do |team|
+      #         scores(team.name)
+      #         puts ""
+      #       end
+      #     end
+      #   else
+      #     team_name = args.shift
+      #     teams_provider = TeamsProvider.new
+      #     team = teams_provider.lookup(team_name)
+      #     if team.nil?
+      #       puts "Couldn't find the team you specified. Here is the current list of teams..."
+      #       self.teams
+      #     else
+      #       puts "Scores for #{team.name}"
+      #       scores_provider = ScoresProvider.new
+      #       match_scores =
+      #       matches = schedule_provider.get_schedule(team.id)
+      #       matches.each { |m| puts m }
+      #     end
+      #   end
+
+      # end
+
       def teams(*args)
         teams = TeamsProvider.new.all
         teams.each { |t| puts t }
@@ -132,7 +179,7 @@ the list.
 
   class Match
 
-    attr_accessor :time, :home, :visitor, :location, :division
+    attr_accessor :time, :home, :visitor, :location, :division, :set_results
 
     def initialize(params={})
       @time = Chronic.parse(params[:time])
@@ -140,6 +187,7 @@ the list.
       @visitor = params[:visitor]
       @location = params[:location]
       @division = params[:division]
+      @set_results = []
     end
 
     def to_s
@@ -164,6 +212,124 @@ the list.
     def unknown_time
       "??/?? ?:????"
     end
+
+    def add_set_result(set_result)
+      set_results << set_result
+    end
+
+    def results_for(team)
+      return nil unless [home, visitor].include?(team)
+      perspective = (team == home ? :home : :visitor)
+      MatchResults.new(self, perspective: perspective)
+    end
+
+  end
+
+  class SetResult
+
+    def initialize(set:, home:, visitor:)
+      @set = set
+      @home = home
+      @visitor = visitor
+    end
+
+    attr_accessor :set, :home, :visitor
+
+    def winner
+      return :tie if home == visitor
+      home > visitor ? :home : :visitor
+    end
+
+    def loser
+      return :tie if winner == :tie
+      winner == :home ? :visitor : :home
+    end
+
+  end
+
+  class MatchResults
+
+    def initialize(match, perspective:)
+      @match = match
+      @team_side = perspective
+      @opponent_side = (perspective == :home ? :visitor : :home)
+    end
+
+    def team
+      @team ||= match.public_send(team_side)
+    end
+
+    def opponent
+      @opponent ||= match.public_send(opponent_side)
+    end
+
+    def result
+      return result_by_point_differential if sets_won == sets_lost
+      sets_won > sets_lost ? "W" : "L"
+    end
+
+    def sets_won
+      @sets_won ||= set_results.map(&:winner).count(team_side)
+    end
+
+    def sets_lost
+      @sets_lost ||= set_results.map(&:winner).count(opponent_side)
+    end
+
+    def point_differential
+      @point_differential ||= set_results
+        .map { |r| r.public_send(team_side) - r.public_send(opponent_side) }
+        .reduce(:+)
+    end
+
+    def match_points_earned
+      points = sets_won * 0.5
+      points += 1 if point_differential > 0
+      points += 2 if result == "W"
+      points
+    end
+
+    def to_s(opponent_name_column_width: self.opponent.length)
+      format = "%-10s  %7s  %-#{opponent_name_column_width}s  " +
+               "%-5s  %-5s  %-5s  %-6s  %3.1f"
+      data = [match_date_string, match_time_string, opponent,
+              set_scores_string(1),
+              set_scores_string(2),
+              set_scores_string(3),
+              result, match_points_earned]
+      format % data
+    end
+
+    private
+
+    attr_reader :match, :team_side, :opponent_side
+
+    def match_date_string
+      match.time.strftime('%m/%d/%Y')
+    end
+
+    def match_time_string
+      match.time.strftime('%l:%M%P')
+    end
+
+    def set_scores_string(set_number)
+      set_result = set_results.find { |sr| sr.set == set_number }
+      return "" if set_result.nil?
+
+      team_score = set_result.public_send(team_side)
+      opponent_score = set_result.public_send(opponent_side)
+      "#{team_score}-#{opponent_score}"
+    end
+
+    def set_results
+      match.set_results
+    end
+
+    def result_by_point_differential
+      return "T" if point_differential == 0
+      point_differential > 0 ? "W" : "L"
+    end
+
   end
 
   class Standing
