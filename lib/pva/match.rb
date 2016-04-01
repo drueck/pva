@@ -27,5 +27,28 @@ module Pva
       MatchResults.new(self, perspective: perspective)
     end
 
+    def to_s
+      return "#{formatted_date} BYE" if bye?
+      "#{formatted_date_and_time} #{home} vs. #{visitor} at #{location}"
+    end
+
+    def bye?
+      location == "BYE"
+    end
+
+    private
+
+    def formatted_date_and_time
+      time ? time.strftime('%-m/%e %l:%M%P') : unknown_time
+    end
+
+    def formatted_date
+      time ? time.strftime('%-m/%e -------') : unknown_time
+    end
+
+    def unknown_time
+      "??/?? ?:????"
+    end
+
   end
 end

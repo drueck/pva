@@ -14,7 +14,7 @@ module Pva
       doc = Nokogiri::HTML(response)
 
       doc.css('tr')[1..-1]
-        .map { |tr| tr.element_children.map(&:content) }
+        .map { |tr| tr.element_children.map(&:content).map(&:strip) }
     end
 
     def match_from_array(m)
