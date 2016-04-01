@@ -8,12 +8,13 @@ A Command Line Interface for the
 At this point the project is set up to be built and installed as a ruby gem,
 but I have not pushed it up to rubygems. So, for the time being, this is how
 you would build the latest version of the gem and get it installed on your
-system.
+system. Note: Currently requires Ruby 2.1+ and possibly build tools and
+libraries to build the native extensions for nokogiri, one of the dependencies.
 
 1. `git clone https://github.com/drueck/pva.git`
 2. `cd pva`
 2. `gem build pva.gemspec`
-3. `gem install pva-<version>.gem`
+3. `[sudo] gem install pva-<version>.gem`
 
 Then just run `pva` to display the help and see what commands are available.
 
