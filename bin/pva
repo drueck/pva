@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+
+require "pva"
+
+Pva::Cli.run(*ARGV)
