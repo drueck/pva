@@ -1,6 +1,14 @@
 module Pva
   class MatchResults
 
+    def self.header_row(opponent_name_column_width:)
+      format = "%-10s  %7s  %-#{opponent_name_column_width}s  " +
+               "%-5s  %-5s  %-5s  %-6s  %-4s"
+      data = ["Date", "Time", "Opponent", "Set 1", "Set 2",
+              "Set 3", "Result", "MPs"]
+      format % data
+    end
+
     def initialize(match, perspective:)
       @match = match
       @team_side = perspective
