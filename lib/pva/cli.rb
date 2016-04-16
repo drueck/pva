@@ -101,7 +101,7 @@ the list.
             puts "No teams were found in your teams cache. "\
               "Look up a team's scores to add that team."
           else
-            puts "Scores for your teams:\n\n"
+            puts "Scores For Your Teams:\n\n"
             teams.each do |team|
               scores(team.name)
               puts ""
