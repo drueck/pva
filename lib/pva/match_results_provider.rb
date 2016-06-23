@@ -1,7 +1,9 @@
+require "pp"
 module Pva
   class MatchResultsProvider
 
     MATCH_RESULTS_URL = "http://portlandvolleyball.org/scores.php"
+    MIN_COLUMN_COUNT = 5
 
     def get_match_results(team)
       match_results_data(team.id).map { |mr|
@@ -14,8 +16,18 @@ module Pva
       response = HTTParty.post(MATCH_RESULTS_URL, body: { teams: team_id })
       doc = Nokogiri::HTML(response)
 
-      doc.css("tr")[2..-1]
+      scores_rows = doc.css("tr")[2..-1]
         .map { |tr| tr.element_children.map(&:content).map(&:strip) }
+
+      have_scores_data?(scores_rows) ? scores_rows : []
+    end
+
+    def have_scores_data?(scores_rows)
+      return false if scores_rows.nil?
+      return false if scores_rows.length < 1
+      return false if scores_rows.first.nil?
+      return false if scores_rows.first.length < MIN_COLUMN_COUNT
+      true
     end
 
     def match_results_from_array(mr, team_name:)

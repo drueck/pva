@@ -5,7 +5,7 @@ module Pva
 
     def get_standings(division_name)
       DivisionStandings.new(division_name: division_name,
-                          standings: standings(division_name))
+                            standings: standings(division_name))
     end
 
     private
@@ -15,11 +15,14 @@ module Pva
     end
 
     def standings_data(division_name)
+      standings_rows(division_name)
+        .map { |tr| tr.element_children.map(&:content) }
+    end
+
+    def standings_rows(division_name)
       response = HTTParty.get(STANDINGS_URL)
       doc = Nokogiri::HTML(response)
-
-      doc.xpath("//a[@name='#{division_name}']/following::table[1]/tr")[1..-1]
-        .map { |tr| tr.element_children.map(&:content) }
+      doc.xpath("//a[@name='#{division_name}']/following::table[1]/tr")[1..-1] || []
     end
 
     def standing_from_array(s)
