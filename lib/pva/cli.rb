@@ -60,7 +60,7 @@ the list.
           else
             puts "Schedule for #{team.name}"
             schedule_provider = ScheduleProvider.new
-            matches = schedule_provider.get_schedule(team.id)
+            matches = schedule_provider.get_schedule(team)
             matches.each { |m| puts m }
           end
         end
