@@ -6,17 +6,21 @@ module Pva
     MIN_COLUMN_COUNT = 5
 
     def get_match_results(team)
-      match_results_data(team.id).map { |mr|
+      match_results_data(team).map { |mr|
         match_results_from_array(mr, team_name: team.name) }
     end
 
     private
 
-    def match_results_data(team_id)
-      response = HTTParty.post(MATCH_RESULTS_URL, body: { teams: team_id })
+    def match_results_data(team)
+      response = HTTParty.get(MATCH_RESULTS_URL)
       doc = Nokogiri::HTML(response)
 
-      scores_rows = doc.css("tr")[2..-1]
+      rows_for_team_xpath = "//tr[(td//text()[contains(., '#{team.name}')]) " +
+        "and (td[3]//text()[contains(., '#{team.division}')])]"
+
+      scores_rows = doc
+        .xpath(rows_for_team_xpath)
         .map { |tr| tr.element_children.map(&:content).map(&:strip) }
 
       have_scores_data?(scores_rows) ? scores_rows : []
