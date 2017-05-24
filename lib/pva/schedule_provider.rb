@@ -3,17 +3,18 @@ module Pva
 
     SCHEDULES_URL = 'http://portlandvolleyball.org/schedules.php'
 
-    def get_schedule(team_id)
-      matches_data(team_id).map { |m| match_from_array(m) }
+    def get_schedule(team)
+      matches_data(team).map { |m| match_from_array(m) }
     end
 
     private
 
-    def matches_data(team_id)
-      response = HTTParty.post(SCHEDULES_URL, body: { teams: team_id })
+    def matches_data(team)
+      response = HTTParty.get(SCHEDULES_URL)
       doc = Nokogiri::HTML(response)
 
-      doc.css('tr')[1..-1]
+      doc.css("table.schedule-table")
+        .xpath("//tr[(td//text()[contains(., '#{team.name}')]) and (td[6]//text()[contains(., '#{team.division}')])]")
         .map { |tr| tr.element_children.map(&:content).map(&:strip) }
     end
 
