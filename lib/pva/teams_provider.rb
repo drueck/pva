@@ -1,6 +1,8 @@
 module Pva
   class TeamsProvider
 
+    SCHEDULES_URL = 'https://portlandvolleyball.org/schedules.php'
+
     attr_reader :cache
 
     def initialize
@@ -17,7 +19,7 @@ module Pva
     end
 
     def all
-      response = HTTParty.get('http://portlandvolleyball.org/schedules.php')
+      response = HTTParty.get(SCHEDULES_URL)
       doc = Nokogiri::HTML(response)
       teams_select = doc.css('select[name=teams]')
       team_options = teams_select.children

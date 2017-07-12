@@ -1,7 +1,7 @@
 module Pva
   class DivisionStandingsProvider
 
-    STANDINGS_URL = 'http://portlandvolleyball.org/standings.php'
+    STANDINGS_URL = 'https://portlandvolleyball.org/standings.php'
 
     def get_standings(division_name)
       DivisionStandings.new(division_name: division_name,

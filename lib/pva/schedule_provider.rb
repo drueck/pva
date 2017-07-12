@@ -1,7 +1,7 @@
 module Pva
   class ScheduleProvider
 
-    SCHEDULES_URL = 'http://portlandvolleyball.org/schedules.php'
+    SCHEDULES_URL = 'https://portlandvolleyball.org/schedules.php'
 
     def get_schedule(team_id)
       matches_data(team_id).map { |m| match_from_array(m) }

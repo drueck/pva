@@ -2,7 +2,7 @@ require "pp"
 module Pva
   class MatchResultsProvider
 
-    MATCH_RESULTS_URL = "http://portlandvolleyball.org/scores.php"
+    MATCH_RESULTS_URL = "https://portlandvolleyball.org/scores.php"
     MIN_COLUMN_COUNT = 5
 
     def get_match_results(team)
