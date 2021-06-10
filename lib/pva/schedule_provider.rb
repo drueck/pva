@@ -20,10 +20,11 @@ module Pva
     def match_from_array(m)
       Match.new({
         time: "#{m[0]} #{m[1]} pm",
-        home: m[2],
-        visitor: m[3],
-        location: m[4],
-        division: m[5]
+        court: m[2],
+        home: m[3],
+        visitor: m[4],
+        location: m[5],
+        division: m[6]
       })
     end
 

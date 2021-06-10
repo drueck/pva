@@ -1,20 +1,16 @@
 module Pva
   class Match
 
-    attr_accessor :time, :home, :visitor, :location, :division, :set_results
+    attr_accessor :time, :home, :visitor, :location, :court, :division, :set_results
 
     def initialize(params={})
       @time = Chronic.parse(params[:time])
       @home = params[:home]
       @visitor = params[:visitor]
       @location = params[:location]
+      @court = params[:court]
       @division = params[:division]
       @set_results = []
-    end
-
-    def to_s
-      formatted_time = time.strftime('%-m/%-e %l:%M%P')
-      "#{formatted_time} #{home} vs. #{visitor} at #{location}"
     end
 
     def add_set_result(set_result)
@@ -29,7 +25,7 @@ module Pva
 
     def to_s
       return "#{formatted_date} BYE" if bye?
-      "#{formatted_date_and_time} #{home} vs. #{visitor} at #{location}"
+      "#{formatted_date_and_time} #{home} vs. #{visitor} at #{location} #{court}".strip()
     end
 
     def bye?
