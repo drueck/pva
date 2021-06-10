@@ -20,7 +20,7 @@ module Pva
 
     def all
       response = HTTParty.get(SCHEDULES_URL)
-      doc = Nokogiri::HTML(response)
+      doc = Nokogiri::HTML(response.body)
       teams_select = doc.css('select[name=teams]')
       team_options = teams_select.children
       team_options.map { |option| team_from_option(option) }

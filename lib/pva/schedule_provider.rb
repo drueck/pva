@@ -11,7 +11,7 @@ module Pva
 
     def matches_data(team_id)
       response = HTTParty.post(SCHEDULES_URL, body: { teams: team_id })
-      doc = Nokogiri::HTML(response)
+      doc = Nokogiri::HTML(response.body)
 
       doc.css('tr')[1..-1]
         .map { |tr| tr.element_children.map(&:content).map(&:strip) }

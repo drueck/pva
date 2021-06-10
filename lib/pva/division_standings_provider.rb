@@ -21,7 +21,7 @@ module Pva
 
     def standings_rows(division_name)
       response = HTTParty.get(STANDINGS_URL)
-      doc = Nokogiri::HTML(response)
+      doc = Nokogiri::HTML(response.body)
       doc.xpath("//a[@name='#{division_name}']/following::table[1]/tr")[1..-1] || []
     end
 
